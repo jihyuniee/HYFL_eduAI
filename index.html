@@ -376,42 +376,79 @@
 
 <!-- ── Login Screen ── -->
 <div id="login-screen">
-  <div class="login-box">
+  <div class="login-box" style="width:420px;">
     <div class="login-logo">HYFL edu<span>AI</span></div>
     <div class="login-sub">교육용 AI 대화 플랫폼</div>
     <div class="login-contest">
       📊 2026 공공교육데이터 AI활용대회<br>
       대회 기간 중 교사 승인 팀만 접속 가능합니다
     </div>
-    <div class="field-group">
-      <div class="field-label">학년</div>
-      <select id="grade-select" onchange="updateClassSelect()">
-        <option value="2">2학년</option>
-      </select>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+      <button id="tab-login" onclick="switchTab('login')" style="flex:1;padding:10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;border:none;cursor:pointer;background:var(--accent);color:white;font-weight:500;">입장하기</button>
+      <button id="tab-register" onclick="switchTab('register')" style="flex:1;padding:10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;border:none;cursor:pointer;background:var(--surface2);color:var(--muted);">팀 등록 신청</button>
     </div>
-    <div class="field-group">
-      <div class="field-label">반</div>
-      <select id="class-select" onchange="updateTeamSelect()">
-        <option value="">— 반 선택 —</option>
-        <option value="1">1반</option>
-        <option value="2">2반</option>
-        <option value="3">3반</option>
-        <option value="4">4반</option>
-        <option value="5">5반</option>
-      </select>
+
+    <!-- 입장 폼 -->
+    <div id="form-login">
+      <div class="field-group">
+        <div class="field-label">반</div>
+        <select id="class-select" onchange="updateTeamSelect()">
+          <option value="">— 반 선택 —</option>
+          <option value="1">1반</option><option value="2">2반</option>
+          <option value="3">3반</option><option value="4">4반</option>
+          <option value="5">5반</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">팀</div>
+        <select id="team-select">
+          <option value="">— 팀 선택 —</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">팀 비밀번호</div>
+        <input type="password" id="team-pw" placeholder="비밀번호 입력" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">입장하기</button>
+      <div class="login-error" id="login-error"></div>
     </div>
-    <div class="field-group">
-      <div class="field-label">팀</div>
-      <select id="team-select">
-        <option value="">— 팀 선택 —</option>
-      </select>
+
+    <!-- 팀 등록 신청 폼 -->
+    <div id="form-register" style="display:none;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <div style="flex:1;">
+          <div class="field-label">반</div>
+          <select id="reg-class">
+            <option value="">반 선택</option>
+            <option value="1">1반</option><option value="2">2반</option>
+            <option value="3">3반</option><option value="4">4반</option>
+            <option value="5">5반</option>
+          </select>
+        </div>
+        <div style="flex:2;">
+          <div class="field-label">팀 이름</div>
+          <input type="text" id="reg-team" placeholder="예: 데이터탐험대, 1조">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">팀원 이름 <span style="color:var(--muted);font-size:11px;">(쉼표로 구분, 예: 홍길동, 김철수, 이영희)</span></div>
+        <input type="text" id="reg-members" placeholder="팀원 이름을 입력하세요">
+      </div>
+      <div class="field-group">
+        <div class="field-label">팀 비밀번호 설정</div>
+        <input type="password" id="reg-pw" placeholder="팀이 사용할 비밀번호">
+      </div>
+      <div class="field-group">
+        <div class="field-label">비밀번호 확인</div>
+        <input type="password" id="reg-pw2" placeholder="비밀번호 재입력">
+      </div>
+      <button class="login-btn" onclick="doRegister()">승인 요청 보내기</button>
+      <div class="login-error" id="register-error"></div>
+      <div id="register-success" style="display:none;margin-top:12px;padding:12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;font-size:13px;color:#10b981;text-align:center;line-height:1.6;"></div>
     </div>
-    <div class="field-group">
-      <div class="field-label">팀 비밀번호</div>
-      <input type="password" id="team-pw" placeholder="비밀번호 입력" autocomplete="off">
-    </div>
-    <button class="login-btn" onclick="doLogin()">입장하기</button>
-    <div class="login-error" id="login-error"></div>
+
     <div style="margin-top:20px; text-align:center;">
       <button onclick="showAdminLogin()" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;">교사 관리자 로그인</button>
     </div>
@@ -588,48 +625,87 @@ function getApiKeys() {
   return JSON.parse(localStorage.getItem(API_KEYS_KEY) || '{}');
 }
 
-// ── Cascade Selects ──
-function updateClassSelect() {
-  updateTeamSelect();
+// ── Tab ──
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('form-login').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('form-register').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('tab-login').style.background = isLogin ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('tab-login').style.color = isLogin ? 'white' : 'var(--muted)';
+  document.getElementById('tab-register').style.background = isLogin ? 'var(--surface2)' : 'var(--accent)';
+  document.getElementById('tab-register').style.color = isLogin ? 'var(--muted)' : 'white';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('register-error').style.display = 'none';
+  document.getElementById('register-success').style.display = 'none';
 }
+
+// ── Cascade Selects ──
+function updateClassSelect() { updateTeamSelect(); }
 
 function updateTeamSelect() {
   const cls = document.getElementById('class-select').value;
   const teamSel = document.getElementById('team-select');
   teamSel.innerHTML = '<option value="">— 팀 선택 —</option>';
   if (!cls) return;
-  const teams = getTeams().filter(t => t.grade === '2' && t.cls === cls && t.status === 'active');
-  teams.forEach(t => {
+  getTeams().filter(t => t.grade === '2' && t.cls === cls && t.status === 'active').forEach(t => {
     const opt = document.createElement('option');
     opt.value = t.name; opt.textContent = t.name;
     teamSel.appendChild(opt);
   });
 }
 
-function populateTeamSelect() {
-  updateTeamSelect();
-}
+function populateTeamSelect() { updateTeamSelect(); }
 
 // ── Login ──
 function doLogin() {
-  const grade = '2';
-  const cls = document.getElementById('class-select').value;
+  const cls  = document.getElementById('class-select').value;
   const team = document.getElementById('team-select').value;
-  const pw = document.getElementById('team-pw').value;
-  const err = document.getElementById('login-error');
+  const pw   = document.getElementById('team-pw').value;
+  const err  = document.getElementById('login-error');
   if (!cls)  { showError(err, '반을 선택해주세요'); return; }
   if (!team) { showError(err, '팀을 선택해주세요'); return; }
   if (!pw)   { showError(err, '비밀번호를 입력해주세요'); return; }
-  const found = getTeams().find(t => t.grade === grade && t.cls === cls && t.name === team);
-  if (!found) { showError(err, '팀을 찾을 수 없습니다'); return; }
-  if (found.status !== 'active') { showError(err, '아직 교사 승인이 되지 않은 팀입니다'); return; }
-  if (found.password !== pw) { showError(err, '비밀번호가 틀렸습니다'); return; }
+  const found = getTeams().find(t => t.grade === '2' && t.cls === cls && t.name === team);
+  if (!found)                   { showError(err, '팀을 찾을 수 없습니다'); return; }
+  if (found.status !== 'active'){ showError(err, '아직 교사 승인이 되지 않은 팀입니다'); return; }
+  if (found.password !== pw)    { showError(err, '비밀번호가 틀렸습니다'); return; }
   currentTeam = `2학년 ${cls}반 ${team}`;
   err.style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('team-chip').textContent = currentTeam;
   document.getElementById('app').classList.add('visible');
   loadHistory();
+}
+
+// ── Register ──
+function doRegister() {
+  const cls     = document.getElementById('reg-class').value;
+  const name    = document.getElementById('reg-team').value.trim();
+  const members = document.getElementById('reg-members').value.trim();
+  const pw      = document.getElementById('reg-pw').value;
+  const pw2     = document.getElementById('reg-pw2').value;
+  const err     = document.getElementById('register-error');
+  const suc     = document.getElementById('register-success');
+  err.style.display = 'none'; suc.style.display = 'none';
+  if (!cls)     { showError(err, '반을 선택해주세요'); return; }
+  if (!name)    { showError(err, '팀 이름을 입력해주세요'); return; }
+  if (!members) { showError(err, '팀원 이름을 입력해주세요'); return; }
+  if (!pw)      { showError(err, '비밀번호를 설정해주세요'); return; }
+  if (pw !== pw2){ showError(err, '비밀번호가 일치하지 않습니다'); return; }
+  const teams = getTeams();
+  if (teams.find(t => t.grade === '2' && t.cls === cls && t.name === name)) {
+    showError(err, '이미 같은 반에 같은 이름의 팀이 있습니다'); return;
+  }
+  teams.push({ grade: '2', cls, name, members, password: pw, status: 'pending' });
+  saveTeams(teams);
+  // 폼 초기화
+  document.getElementById('reg-class').value = '';
+  document.getElementById('reg-team').value = '';
+  document.getElementById('reg-members').value = '';
+  document.getElementById('reg-pw').value = '';
+  document.getElementById('reg-pw2').value = '';
+  suc.textContent = `✅ ${cls}반 "${name}" 팀 등록 신청이 완료됐어요!\n선생님 승인 후 입장할 수 있습니다.`;
+  suc.style.display = 'block';
 }
 
 function doLogout() {
@@ -642,6 +718,7 @@ function doLogout() {
   document.getElementById('messages').innerHTML = '';
   document.getElementById('messages').appendChild(createWelcome());
   document.getElementById('history-list').innerHTML = '';
+  switchTab('login');
 }
 
 function showError(el, msg) {
@@ -737,32 +814,42 @@ function removeTeam(grade, cls, name) {
 function renderTeamGrid() {
   const grid = document.getElementById('team-grid');
   const teams = getTeams();
-  if (!teams.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:13px;">등록된 팀이 없습니다. 위에서 팀을 추가하세요.</div>'; return; }
-  // Group by grade → class
+  if (!teams.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:13px;">등록된 팀이 없습니다. 학생들이 팀 등록 신청을 하면 여기에 나타납니다.</div>'; return; }
+  // pending 먼저, 그 다음 active, 그 다음 inactive / 반별 정렬
+  const sorted = [...teams].sort((a,b) => {
+    const order = { pending:0, active:1, inactive:2 };
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    return (a.cls+a.name).localeCompare(b.cls+b.name);
+  });
   const grouped = {};
-  teams.forEach(t => {
-    const key = `${t.grade}학년 ${t.cls}반`;
+  sorted.forEach(t => {
+    const key = `2학년 ${t.cls}반`;
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(t);
   });
-  grid.innerHTML = Object.entries(grouped).sort().map(([label, ts]) => `
-    <div style="grid-column:1/-1;font-size:12px;color:var(--muted);margin-top:8px;margin-bottom:4px;padding:0 2px;">${label}</div>
+  // pending 팀 수 뱃지
+  const pendingCount = teams.filter(t => t.status === 'pending').length;
+  grid.innerHTML = (pendingCount ? `<div style="grid-column:1/-1;font-size:12px;padding:8px 12px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;color:#fbbf24;margin-bottom:4px;">⏳ 승인 대기 중인 팀이 ${pendingCount}개 있습니다</div>` : '') +
+  Object.entries(grouped).sort().map(([label, ts]) => `
+    <div style="grid-column:1/-1;font-size:11px;color:var(--muted);margin-top:12px;margin-bottom:4px;padding:0 2px;text-transform:uppercase;letter-spacing:0.5px;">${label}</div>
     ${ts.map(t => {
       const dotClass = t.status === 'active' ? 'status-active' : t.status === 'pending' ? 'status-pending' : 'status-inactive';
-      const statusLabel = t.status === 'active' ? '승인됨' : t.status === 'pending' ? '대기중' : '비활성';
+      const statusLabel = t.status === 'active' ? '승인됨' : t.status === 'pending' ? '승인 대기' : '비활성';
       const g = t.grade, c = t.cls, n = t.name;
-      return `<div class="team-card">
+      const membersHtml = t.members ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">👥 ${t.members}</div>` : '';
+      return `<div class="team-card" style="${t.status==='pending'?'border-color:rgba(245,158,11,0.4);':''}">
         <div class="team-card-header">
           <div class="team-name">${t.name}</div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:11px;color:var(--muted);">${statusLabel}</span>
+            <span style="font-size:11px;color:${t.status==='pending'?'#fbbf24':'var(--muted)'};">${statusLabel}</span>
             <div class="status-dot ${dotClass}"></div>
           </div>
         </div>
-        <div class="team-pw">비밀번호: ${'•'.repeat(t.password.length)}</div>
+        ${membersHtml}
+        <div class="team-pw" style="margin-bottom:10px;">비밀번호: ${'•'.repeat(t.password.length)}</div>
         <div class="team-actions">
           ${t.status !== 'active'
-            ? `<button class="action-btn approve" onclick="approveTeam('${g}','${c}','${n}')">승인</button>`
+            ? `<button class="action-btn approve" onclick="approveTeam('${g}','${c}','${n}')">✓ 승인</button>`
             : `<button class="action-btn revoke" onclick="revokeTeam('${g}','${c}','${n}')">비활성화</button>`}
           <button class="action-btn revoke" onclick="removeTeam('${g}','${c}','${n}')">삭제</button>
         </div>
