@@ -370,6 +370,33 @@
     .sidebar { display: none; }
     .login-box { width: 92%; padding: 28px 20px; }
   }
+
+  /* ── Sidebar tabs ── */
+  .sb-tab {
+    flex:1; padding:7px 4px; font-size:12px;
+    font-family:'Noto Sans KR',sans-serif;
+    border:1px solid var(--border); border-radius:8px;
+    background:transparent; color:var(--muted); cursor:pointer;
+    transition:all 0.15s;
+  }
+  .sb-tab.active { background:var(--accent); color:white; border-color:var(--accent); }
+
+  /* ── Info panel ── */
+  .info-section { margin-bottom:14px; }
+  .info-title { font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px; padding:0 2px; }
+  .info-card {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:12px;
+  }
+  .info-row { display:flex; align-items:flex-start; gap:6px; font-size:12px; color:var(--muted); margin-bottom:5px; line-height:1.5; }
+  .info-dot { width:4px; height:4px; border-radius:50%; background:var(--accent2); flex-shrink:0; margin-top:5px; }
+  .info-link-btn {
+    display:inline-block; margin-top:8px; font-size:12px;
+    color:var(--accent2); text-decoration:none;
+    padding:5px 10px; border:1px solid rgba(108,99,255,0.3);
+    border-radius:6px; transition:all 0.15s; width:100%; text-align:center;
+  }
+  .info-link-btn:hover { background:rgba(108,99,255,0.1); }
 </style>
 </head>
 <body>
@@ -468,13 +495,13 @@
   <div class="body-wrap">
     <div class="sidebar">
       <div class="sidebar-label">AI 모델</div>
-      <button class="model-btn" onclick="setModel('gpt',this)" id="btn-gpt">
+      <button class="model-btn active" onclick="setModel('gpt',this)" id="btn-gpt">
         <div class="mdot mdot-gpt"></div> GPT-4o
       </button>
       <button class="model-btn" onclick="setModel('gemini',this)" id="btn-gemini">
         <div class="mdot mdot-gemini"></div> Gemini 1.5
       </button>
-      <button class="model-btn active" onclick="setModel('claude',this)" id="btn-claude">
+      <button class="model-btn" onclick="setModel('claude',this)" id="btn-claude">
         <div class="mdot mdot-claude"></div> Claude Sonnet
       </button>
       <button class="new-chat-btn" onclick="newChat()">
@@ -509,7 +536,7 @@
           </button>
         </div>
         <div class="input-footer">
-          현재 모델: <span class="model-tag" id="model-label">Claude Sonnet</span> &nbsp;·&nbsp; 수업 목적으로만 사용하세요
+          현재 모델: <span class="model-tag" id="model-label">GPT-4o</span> &nbsp;·&nbsp; 수업 목적으로만 사용하세요
         </div>
       </div>
     </div>
@@ -603,7 +630,7 @@ const API_KEYS_KEY = 'eduai_api_keys';
 const DEFAULT_ADMIN_PW = 'teacher1234';
 
 let currentTeam = null;
-let currentModel = 'claude';
+let currentModel = 'gpt';
 let messages = [];
 let histories = [];
 let currentHistoryIdx = -1;
