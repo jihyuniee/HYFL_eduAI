@@ -1012,14 +1012,14 @@ function renderMarkdown(raw) {
   const codeBlocks = [];
   const withPlaceholders = escapeHtml(raw).replace(/```(?:\w*\n)?([\s\S]*?)```/g, (m, code) => {
     codeBlocks.push(code);
-    return ` CODEBLOCK${codeBlocks.length - 1} `;
+    return `@@CODEBLOCK_${codeBlocks.length - 1}@@`;
   });
 
   return withPlaceholders.split(/\n{2,}/).map(block => {
     const trimmed = block.trim();
     if (!trimmed) return '';
 
-    const codeMatch = trimmed.match(/^ CODEBLOCK(\d+) $/);
+    const codeMatch = trimmed.match(/^@@CODEBLOCK_(\d+)@@$/);
     if (codeMatch) return `<pre><code>${codeBlocks[+codeMatch[1]]}</code></pre>`;
 
     const lines = trimmed.split('\n').filter(l => l.trim() !== '');
@@ -1063,34 +1063,50 @@ async function sendMessage() {
 }
 
 // ── AI API Calls ──
+const SYSTEM_PROMPT = '당신은 한국 학생들의 공공교육데이터 AI 활용 대회를 돕는 교육용 AI 도우미입니다. 학생 수준에 맞게 친절하고 명확하게 답변하세요.';
+const CONTINUE_PROMPT = '방금 답변이 글자 수 제한으로 중간에 끊겼습니다. 끊긴 지점부터 자연스럽게 이어서 계속 작성해 주세요. 이미 작성한 내용을 반복하지 말고, 새로운 내용만 출력하세요.';
+const MAX_CONTINUATIONS = 5; // 무한 루프 방지: 모델당 최대 이어쓰기 횟수
+
 async function callAI(model, msgs) {
   const keys = getApiKeys();
 
   if (model === 'claude') {
     const key = keys.claude;
     if (!key) throw new Error('Claude API 키가 설정되지 않았습니다. 교사에게 문의하세요.');
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: '당신은 한국 학생들의 공공교육데이터 AI 활용 대회를 돕는 교육용 AI 도우미입니다. 학생 수준에 맞게 친절하고 명확하게 답변하세요.',
-        messages: msgs.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }))
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.content[0].text;
+
+    const conversation = msgs.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+    let fullReply = '';
+
+    for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          messages: conversation
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+
+      const piece = data.content[0].text;
+      fullReply += piece;
+
+      // stop_reason이 'max_tokens'면 토큰 제한으로 중간에 끊긴 것 → 자동으로 이어서 요청
+      if (data.stop_reason !== 'max_tokens') break;
+
+      conversation.push({ role: 'assistant', content: piece });
+      conversation.push({ role: 'user', content: CONTINUE_PROMPT });
+    }
+
+    return fullReply;
   }
 
   if (model === 'gpt') {
     const key = keys.openai;
     if (!key) throw new Error('OpenAI API 키가 설정되지 않았습니다. 교사에게 문의하세요.');
-
-    const SYSTEM_PROMPT = '당신은 한국 학생들의 공공교육데이터 AI 활용 대회를 돕는 교육용 AI 도우미입니다. 학생 수준에 맞게 친절하고 명확하게 답변하세요.';
-    const CONTINUE_PROMPT = '방금 답변이 글자 수 제한으로 중간에 끊겼습니다. 끊긴 지점부터 자연스럽게 이어서 계속 작성해 주세요. 이미 작성한 내용을 반복하지 말고, 새로운 내용만 출력하세요.';
-    const MAX_CONTINUATIONS = 5; // 무한 루프 방지
 
     const conversation = msgs.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
     let fullReply = '';
@@ -1129,19 +1145,35 @@ async function callAI(model, msgs) {
   if (model === 'gemini') {
     const key = keys.gemini;
     if (!key) throw new Error('Gemini API 키가 설정되지 않았습니다. 교사에게 문의하세요.');
-    const geminiMsgs = msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: '당신은 한국 학생들의 공공교육데이터 AI 활용 대회를 돕는 교육용 AI 도우미입니다. 학생 수준에 맞게 친절하고 명확하게 답변하세요.' }] },
-        contents: geminiMsgs,
-        generationConfig: { maxOutputTokens: 1024 }
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.candidates[0].content.parts[0].text;
+
+    const conversation = msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+    let fullReply = '';
+
+    for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: conversation,
+          generationConfig: { maxOutputTokens: 1024 }
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+
+      const candidate = data.candidates[0];
+      const piece = candidate.content.parts.map(p => p.text || '').join('');
+      fullReply += piece;
+
+      // finishReason이 'MAX_TOKENS'면 토큰 제한으로 중간에 끊긴 것 → 자동으로 이어서 요청
+      if (candidate.finishReason !== 'MAX_TOKENS') break;
+
+      conversation.push({ role: 'model', parts: [{ text: piece }] });
+      conversation.push({ role: 'user', parts: [{ text: CONTINUE_PROMPT }] });
+    }
+
+    return fullReply;
   }
 }
 
